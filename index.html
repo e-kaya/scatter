@@ -1,0 +1,213 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+
+    <title>ScatterVis</title>
+    <meta name="description" content="Dashboard">
+
+	<script src="js_css/d3.v3.js"></script>
+	
+	<script src="js_css/bootstrap.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="js_css/bootstrap.min.css" media="screen" />
+	
+	<script src="js_css/queue.js"></script>
+	
+	<link rel="stylesheet" type="text/css" href="js_css/style.css" media="screen" />
+	
+</head>
+
+<body>
+	
+	<div id="header"> <h2>Scatter Plot</h2> </div>
+	<div id="section">
+		<div id="section-title" height="100px"> <h2>Customer Demographics</h2> </div>
+		
+		<div id="section-body"> 
+
+		</div>
+		
+	</div>
+
+	<div id="nav">
+    		
+	</div>
+
+<div id="footer">
+
+</div>
+
+<script>
+
+	var w       = 1000;
+	var h       = 400;
+	var padding = 20;
+	var radius  = 40;
+	
+	var datafile = ["data/demographics_reduced.csv"];
+	
+	var dataset = [];
+	
+	// Calculated metadata
+	var minX, maxX, minY, maxY, xScale, yScale, svg, xAxis, yAxis, rect;
+	
+	// Containers
+	var container;
+	
+	// Behavior
+	var zoom;
+	
+	function renderDatumToText(datum){
+		return "Age: " + datum.age + "\nSalary: " + datum.salary + " \nGender: " + datum.gender;
+	}
+	
+	function initMetaData(_dataset){
+		
+				// salary			  
+		minX    = d3.min(_dataset, function(d){
+						return d.salary;
+					  });
+					  
+		maxX    = d3.max(_dataset, function(d){
+						return d.salary;
+					  });
+					  
+		// age			  
+		minY    = d3.min(_dataset, function(d){
+						return d.age;
+					  });
+					  
+		maxY    = d3.max(_dataset, function(d){
+						return d.age;
+					  });				  
+		
+		xScale  = d3.scale.linear()
+					.domain([0,maxX])
+					.range([padding, w - padding]);
+						
+		yScale  = d3.scale.linear()
+					.domain([0, maxY])
+					.range([h - padding, padding]);					
+		
+		svg     = d3.select("#section-body")
+				   .append("svg")
+					.attr("width", w)
+					.attr("height", h)
+				   .append("g")
+					.attr("transform", "translate(0,0)");
+					
+		rect 	= svg.append("rect")
+					.attr("width", w)
+					.attr("height", h)
+					.style("fill", "none")
+					.style("pointer-events", "all");
+						
+		xAxis   = d3.svg.axis()
+					.scale(xScale)
+					.orient("bottom");
+							
+		yAxis   = d3.svg.axis()
+					.scale(yScale)
+					.orient("left");				
+					
+		svg.append("g")
+		   .attr("class", "axis")
+		   .attr("transform", "translate(0," + (h - padding) + ")")
+		   .call(xAxis)
+		  .append("text")
+		   .attr("class", "label")
+		   .attr("x", w - 20)
+		   .attr("y", -6)
+		   .style("text-anchor", "end")
+		   .text("Salary");
+		   
+		svg.append("g")
+		   .attr("class", "axis")
+		   .attr("transform", "translate(" + padding + ",0)")
+		   .call(yAxis)
+		  .append("text")
+		   .attr("class", "label")
+		   .attr("transform", "rotate(-90)")
+		   .attr("y", 6)
+		   .attr("x", -10)
+		   .attr("dy", ".71em")
+		   .style("text-anchor", "end")
+		   .text("Age");
+		   
+		container = svg.append("g")
+		   .attr("class", "dots")
+		   .style("pointer-events", "all");
+		
+		zoom = d3.behavior.zoom()
+			.scaleExtent([1, 10])
+			.on("zoom", zoomed);;
+						
+	}
+	
+	function zoomed() {
+		container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+	}
+	
+	function drawVisualization(_dataset){
+		svg.select(".dots").selectAll("circle")
+		   .data(_dataset)
+		   .enter()
+		   .append("circle")
+		   .transition()
+		   .attr("cx", function(d){
+			   return xScale(d.salary);
+		   })
+		   .attr("cy", function(d){
+			   return yScale(d.age);
+		   })
+		   .attr("r", 1)
+		   .attr("fill", function(d){
+			   if (d.gender == 'E') {
+				   return "blue";
+			   } else {
+				   return "red";
+			   }
+		   });	
+
+		svg.select(".dots").call(zoom);
+	   
+		svg.selectAll("circle")
+		   .on("mouseover", function(d){
+				d3.select(this)
+				  .append("svg:title")
+				  .text(function(d) { return renderDatumToText(d); });
+		});
+		
+
+	}
+	
+	function loaddata(){
+		var q = queue();
+		q.defer(function(callback) {
+			d3.csv(datafile, function(data) {
+				data.forEach(function(d) {
+					d.salary = +d.salary;
+					d["age"] = +d["age"];
+				});
+				dataset = data;
+				callback(null, data);
+			});
+		});
+		q.await(visualization)
+	}    
+
+	
+	function visualization(err, results) {
+		
+		initMetaData(dataset);
+		drawVisualization(dataset);
+
+	}
+		
+	loaddata();		
+
+</script>
+
+</body>
+</html>
