@@ -40,10 +40,12 @@
 
 <script>
 
+
 	var w       = 1000;
 	var h       = 400;
 	var padding = 20;
 	var radius  = 40;
+	var dotsize = 1;
 	
 	var datafile = ["data/demographics_reduced.csv"];
 	
@@ -55,11 +57,14 @@
 	// Containers
 	var container;
 	
+	// Areas
+	var clip;
+	
 	// Behavior
 	var zoom;
 	
 	function renderDatumToText(datum){
-		return "Age: " + datum.age + "\nSalary: " + datum.salary + " \nGender: " + datum.gender;
+		return "Age: " + datum.age + "\nSalary: " + datum.salary + " TL\nGender: " + datum.gender;
 	}
 	
 	function initMetaData(_dataset){
@@ -96,13 +101,16 @@
 					.attr("height", h)
 				   .append("g")
 					.attr("transform", "translate(0,0)");
-					
-		rect 	= svg.append("rect")
-					.attr("width", w)
-					.attr("height", h)
-					.style("fill", "none")
-					.style("pointer-events", "all");
-						
+	
+		clip = svg.append("defs").append("svg:clipPath")
+			.attr("id", "clip")
+			.append("svg:rect")
+			.attr("id", "clip-rect")
+			.attr("x", padding)
+			.attr("y", padding)
+			.attr('width', w - 2*padding)
+			.attr('height', h - 2*padding);
+	
 		xAxis   = d3.svg.axis()
 					.scale(xScale)
 					.orient("bottom");
@@ -112,7 +120,7 @@
 					.orient("left");				
 					
 		svg.append("g")
-		   .attr("class", "axis")
+		   .classed("axis x", true)
 		   .attr("transform", "translate(0," + (h - padding) + ")")
 		   .call(xAxis)
 		  .append("text")
@@ -123,7 +131,7 @@
 		   .text("Salary");
 		   
 		svg.append("g")
-		   .attr("class", "axis")
+		   .classed("axis y", true)
 		   .attr("transform", "translate(" + padding + ",0)")
 		   .call(yAxis)
 		  .append("text")
@@ -140,17 +148,28 @@
 		   .style("pointer-events", "all");
 		
 		zoom = d3.behavior.zoom()
-			.scaleExtent([1, 10])
-			.on("zoom", zoomed);;
+			.x(xScale)
+			.y(yScale)
+			.scaleExtent([1, 30])
+			.on("zoom", zoomed);
 						
 	}
 	
 	function zoomed() {
 		container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+		svg.select(".dots").selectAll("circle").attr("r", dotsize / zoom.scale());
+		svg.select(".axis.x").call(xAxis);
+		svg.select(".axis.y").call(yAxis);
+	}
+	
+	function circleTransform(d){
+		//
+		return "translate(" + xScale(d.salary) + "," + yScale(d.age) + ")";
 	}
 	
 	function drawVisualization(_dataset){
-		svg.select(".dots").selectAll("circle")
+		svg.select(".dots").attr("clip-path", "url(#clip)")
+		   .selectAll("circle")
 		   .data(_dataset)
 		   .enter()
 		   .append("circle")
@@ -161,7 +180,7 @@
 		   .attr("cy", function(d){
 			   return yScale(d.age);
 		   })
-		   .attr("r", 1)
+		   .attr("r", dotsize)
 		   .attr("fill", function(d){
 			   if (d.gender == 'E') {
 				   return "blue";
@@ -170,7 +189,8 @@
 			   }
 		   });	
 
-		svg.select(".dots").call(zoom);
+		//svg.select(".dots").call(zoom);
+		d3.select('svg').call(zoom);
 	   
 		svg.selectAll("circle")
 		   .on("mouseover", function(d){
@@ -199,6 +219,8 @@
 
 	
 	function visualization(err, results) {
+	    //results is another version of the dataset that I could not find a proper usage.
+		// console.log(results)
 		
 		initMetaData(dataset);
 		drawVisualization(dataset);
